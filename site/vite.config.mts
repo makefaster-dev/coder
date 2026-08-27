@@ -78,6 +78,19 @@ export default defineConfig({
 						{ name: "xterm", test: /@xterm/ },
 						{ name: "emoji-mart", test: /emoji-mart/ },
 						{ name: "radix-ui", test: /radix-ui/ },
+						// Merge families of tiny shared vendor modules that
+						// otherwise ship as dozens of 1-3KB chunks, each costing
+						// a request on the boot path.
+						{ name: "icons", test: /node_modules\/lucide-react\// },
+						{
+							name: "lodash",
+							test: /node_modules\/(?:lodash|lodash-es)\//,
+						},
+						{ name: "dayjs", test: /node_modules\/dayjs\// },
+						{
+							name: "data-vendor",
+							test: /node_modules\/(?:@tanstack|axios|clsx|class-variance-authority|tailwind-merge|cronstrue|date-fns)\//,
+						},
 					],
 				},
 			},
