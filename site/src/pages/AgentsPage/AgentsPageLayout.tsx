@@ -53,6 +53,7 @@ import {
 } from "#/api/queries/workspaces";
 import type * as TypesGen from "#/api/typesGenerated";
 import { DeleteDialog } from "#/components/Dialog/DeleteDialog/DeleteDialog";
+import { DiffsWorkerPoolProvider } from "#/contexts/DiffsWorkerPoolProvider";
 import { useAuthenticated } from "#/hooks/useAuthenticated";
 import {
 	getDefaultOrganizationId,
@@ -825,4 +826,14 @@ const AgentsPageLayout: FC = () => {
 		</>
 	);
 };
-export default AgentsPageLayout;
+// The diffs worker pool is provided here instead of the app root so the
+// workers and highlighter only spawn on the surfaces that render diffs.
+const AgentsPageLayoutWithWorkerPool: FC = () => {
+	return (
+		<DiffsWorkerPoolProvider>
+			<AgentsPageLayout />
+		</DiffsWorkerPoolProvider>
+	);
+};
+
+export default AgentsPageLayoutWithWorkerPool;

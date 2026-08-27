@@ -3,6 +3,7 @@ import { useEffect, useState } from "react";
 import { useParams } from "react-router";
 import { Button } from "#/components/Button/Button";
 import { Spinner } from "#/components/Spinner/Spinner";
+import { DiffsWorkerPoolProvider } from "#/contexts/DiffsWorkerPoolProvider";
 import {
 	DesktopToolbar,
 	type ScaleMode,
@@ -13,7 +14,17 @@ import {
 } from "./hooks/useDesktopConnection";
 import { useZoomShortcuts } from "./hooks/useZoomShortcuts";
 
-export default function DesktopPopoutPage() {
+// The diffs worker pool is provided here instead of the app root so the
+// workers and highlighter only spawn on the surfaces that render diffs.
+export default function DesktopPopoutPageWithWorkerPool() {
+	return (
+		<DiffsWorkerPoolProvider>
+			<DesktopPopoutPage />
+		</DiffsWorkerPoolProvider>
+	);
+}
+
+function DesktopPopoutPage() {
 	const { agentId } = useParams() as { agentId: string };
 	const [scaleMode, setScaleMode] = useState<ScaleMode>("fit");
 	const [isControlling, setIsControlling] = useState(false);
