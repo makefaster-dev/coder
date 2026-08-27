@@ -12,6 +12,30 @@ import (
 	"github.com/coder/coder/v2/codersdk"
 )
 
+// staticAssetPathPrefixes are read-only static file routes that never render
+// the CSRF token. Skipping the CSRF middleware for them keeps its Set-Cookie
+// and "Vary: Cookie" headers off the responses, which would otherwise defeat
+// browser caching of the content-hashed immutable assets: the cookie changes
+// between visits, so every cached asset would miss on revalidation.
+var staticAssetPathPrefixes = []string{
+	"/assets/",
+	"/bin/",
+	"/favicons/",
+	"/icon/",
+}
+
+func isStaticAssetRequest(r *http.Request) bool {
+	if r.Method != http.MethodGet && r.Method != http.MethodHead {
+		return false
+	}
+	for _, prefix := range staticAssetPathPrefixes {
+		if strings.HasPrefix(r.URL.Path, prefix) {
+			return true
+		}
+	}
+	return false
+}
+
 // CSRF is a middleware that verifies that a CSRF token is present in the request
 // for non-GET requests.
 // If enforce is false, then CSRF enforcement is disabled. We still want
@@ -119,6 +143,12 @@ func CSRF(cookieCfg codersdk.HTTPCookieConfig) func(next http.Handler) http.Hand
 			}
 			return false
 		})
-		return mw
+		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			if isStaticAssetRequest(r) {
+				next.ServeHTTP(w, r)
+				return
+			}
+			mw.ServeHTTP(w, r)
+		})
 	}
 }
