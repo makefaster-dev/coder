@@ -88,6 +88,7 @@ type Options struct {
 	Logger            slog.Logger
 	AITasksEnabled    bool
 	AIGatewayEnabled  bool
+	AuthMethods       codersdk.AuthMethods
 }
 
 func New(opts *Options) (*Handler, error) {
@@ -134,6 +135,11 @@ func New(opts *Options) (*Handler, error) {
 		return nil, xerrors.Errorf("failed to marshal build info: %w", err)
 	}
 	handler.buildInfoJSON = html.EscapeString(string(buildInfoResponse))
+	authMethodsResponse, err := json.Marshal(opts.AuthMethods)
+	if err != nil {
+		return nil, xerrors.Errorf("failed to marshal auth methods: %w", err)
+	}
+	handler.authMethodsJSON = html.EscapeString(string(authMethodsResponse))
 	handler.handler = mux.ServeHTTP
 
 	handler.installScript, err = parseInstallScript(opts.SiteFS, opts.BuildInfo)
@@ -147,11 +153,12 @@ func New(opts *Options) (*Handler, error) {
 type Handler struct {
 	opts *Options
 
-	secureHeaders *secure.Secure
-	handler       http.HandlerFunc
-	htmlTemplates *template.Template
-	buildInfoJSON string
-	installScript []byte
+	secureHeaders   *secure.Secure
+	handler         http.HandlerFunc
+	htmlTemplates   *template.Template
+	buildInfoJSON   string
+	authMethodsJSON string
+	installScript   []byte
 
 	// RegionsFetcher will attempt to fetch the more detailed WorkspaceProxy data, but will fall back to the
 	// regions if the user does not have the correct permissions.
@@ -173,9 +180,10 @@ func (h *Handler) ServeHTTP(rw http.ResponseWriter, r *http.Request) {
 	reqFile := filePath(r.URL.Path)
 	state := htmlState{
 		// Token is the CSRF token for the given request
-		CSRF:      csrfState{Token: nosurf.Token(r)},
-		BuildInfo: h.buildInfoJSON,
-		DocsURL:   h.opts.DocsURL,
+		CSRF:        csrfState{Token: nosurf.Token(r)},
+		BuildInfo:   h.buildInfoJSON,
+		DocsURL:     h.opts.DocsURL,
+		AuthMethods: h.authMethodsJSON,
 	}
 
 	// First check if it's a file we have in our templates
@@ -303,6 +311,7 @@ type htmlState struct {
 	Experiments    string
 	Regions        string
 	DocsURL        string
+	AuthMethods    string
 
 	AITasksEnabled   string
 	AIGatewayEnabled string

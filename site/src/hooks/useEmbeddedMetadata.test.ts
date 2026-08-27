@@ -4,6 +4,7 @@ import {
 	MockAIGatewayEnabled,
 	MockAITasksEnabled,
 	MockAppearanceConfig,
+	MockAuthMethodsPasswordOnly,
 	MockBuildInfo,
 	MockEntitlements,
 	MockExperiments,
@@ -39,6 +40,7 @@ const MockRegions: readonly Region[] = [];
 
 const mockDataForTags = {
 	appearance: MockAppearanceConfig,
+	"auth-methods": MockAuthMethodsPasswordOnly,
 	"build-info": MockBuildInfo,
 	entitlements: MockEntitlements,
 	experiments: MockExperiments,
@@ -53,6 +55,10 @@ const mockDataForTags = {
 
 const emptyMetadata: RuntimeHtmlMetadata = {
 	appearance: {
+		available: false,
+		value: undefined,
+	},
+	"auth-methods": {
 		available: false,
 		value: undefined,
 	},
@@ -102,6 +108,10 @@ const populatedMetadata: RuntimeHtmlMetadata = {
 	appearance: {
 		available: true,
 		value: MockAppearanceConfig,
+	},
+	"auth-methods": {
+		available: true,
+		value: MockAuthMethodsPasswordOnly,
 	},
 	"build-info": {
 		available: true,

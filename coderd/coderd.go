@@ -787,6 +787,7 @@ func New(options *Options) *API {
 		Logger:            options.Logger.Named("site"),
 		AITasksEnabled:    options.DeploymentValues.EnableAITasks.Value(),
 		AIGatewayEnabled:  options.DeploymentValues.AI.BridgeConfig.Enabled.Value(),
+		AuthMethods:       api.AuthMethods(),
 	})
 	if err != nil {
 		options.Logger.Fatal(ctx, "failed to initialize site handler", slog.Error(err))

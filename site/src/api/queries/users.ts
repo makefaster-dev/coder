@@ -141,12 +141,16 @@ export const updateRoles = (queryClient: QueryClient) => {
 export const authMethodsQueryKey = ["authMethods"];
 
 export const authMethods = () => {
-	return {
+	return cachedQuery({
+		// The auth methods are deployment configuration, so the document
+		// metadata is always current when it is present. Reading it here saves
+		// the login screen an API round trip before it can render the form.
+		metadata: defaultMetadataManager.getMetadata()["auth-methods"],
 		// Even the endpoint being /users/authmethods we don't want to revalidate it
 		// when users change so its better add a unique query key
 		queryKey: authMethodsQueryKey,
 		queryFn: API.getAuthMethods,
-	};
+	});
 };
 
 export const meKey = ["me"];
