@@ -65,6 +65,15 @@ export default defineConfig({
 				},
 				codeSplitting: {
 					groups: [
+						// react and vite's preload helper must be captured before
+						// the monaco group. Without this, the chunker merges them
+						// into the monaco chunk (via @monaco-editor/react), which
+						// forces every page to download the whole editor chunk at
+						// boot just to get react or the dynamic-import helper.
+						{
+							name: "react",
+							test: /node_modules\/(?:react|react-dom|scheduler|state-local)\/|vite\/preload-helper/,
+						},
 						{ name: "monaco", test: /monaco-editor/ },
 						{ name: "xterm", test: /@xterm/ },
 						{ name: "emoji-mart", test: /emoji-mart/ },
