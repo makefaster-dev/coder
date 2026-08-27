@@ -11,24 +11,58 @@ import {
 import { GlobalErrorBoundary } from "./components/ErrorBoundary/GlobalErrorBoundary";
 import { Loader } from "./components/Loader/Loader";
 import { RequireAuth } from "./contexts/auth/RequireAuth";
-import { DashboardLayout } from "./modules/dashboard/DashboardLayout";
 import { aiTasksEnabled } from "./modules/tasks/useAITasksEnabled";
 import { AISettingsIndexRedirect } from "./pages/AISettingsPage/AISettingsIndexRedirect";
 import { ModelDefaultsRedirect } from "./pages/AISettingsPage/ModelsPage/ModelDefaultsRedirect";
-import AuditPage from "./pages/AuditPage/AuditPage";
-import ConnectionLogPage from "./pages/ConnectionLogPage/ConnectionLogPage";
-import { HealthLayout } from "./pages/HealthPage/HealthLayout";
 import LoginOAuthDevicePage from "./pages/LoginOAuthDevicePage/LoginOAuthDevicePage";
 import LoginPage from "./pages/LoginPage/LoginPage";
 import { SetupPage } from "./pages/SetupPage/SetupPage";
-import { TemplateLayout } from "./pages/TemplatePage/TemplateLayout";
-import { TemplateRedirectController } from "./pages/TemplatePage/TemplateRedirectController";
-import { TemplateSettingsLayout } from "./pages/TemplateSettingsPage/TemplateSettingsLayout";
-import TemplatesPage from "./pages/TemplatesPage/TemplatesPage";
-import UserSettingsLayout from "./pages/UserSettingsPage/Layout";
-import UsersPage from "./pages/UsersPage/UsersPage";
-import { WorkspaceSettingsLayout } from "./pages/WorkspaceSettingsPage/WorkspaceSettingsLayout";
-import WorkspacesPage from "./pages/WorkspacesPage/WorkspacesPage";
+
+// Authenticated layouts and main-navigation pages are lazy so signed-out
+// visitors landing on the login screen do not download the whole dashboard
+// before first paint.
+const DashboardLayout = lazy(() =>
+	import("./modules/dashboard/DashboardLayout").then((m) => ({
+		default: m.DashboardLayout,
+	})),
+);
+const AuditPage = lazy(() => import("./pages/AuditPage/AuditPage"));
+const ConnectionLogPage = lazy(
+	() => import("./pages/ConnectionLogPage/ConnectionLogPage"),
+);
+const HealthLayout = lazy(() =>
+	import("./pages/HealthPage/HealthLayout").then((m) => ({
+		default: m.HealthLayout,
+	})),
+);
+const TemplateLayout = lazy(() =>
+	import("./pages/TemplatePage/TemplateLayout").then((m) => ({
+		default: m.TemplateLayout,
+	})),
+);
+const TemplateRedirectController = lazy(() =>
+	import("./pages/TemplatePage/TemplateRedirectController").then((m) => ({
+		default: m.TemplateRedirectController,
+	})),
+);
+const TemplateSettingsLayout = lazy(() =>
+	import("./pages/TemplateSettingsPage/TemplateSettingsLayout").then((m) => ({
+		default: m.TemplateSettingsLayout,
+	})),
+);
+const TemplatesPage = lazy(() => import("./pages/TemplatesPage/TemplatesPage"));
+const UserSettingsLayout = lazy(
+	() => import("./pages/UserSettingsPage/Layout"),
+);
+const UsersPage = lazy(() => import("./pages/UsersPage/UsersPage"));
+const WorkspaceSettingsLayout = lazy(() =>
+	import("./pages/WorkspaceSettingsPage/WorkspaceSettingsLayout").then((m) => ({
+		default: m.WorkspaceSettingsLayout,
+	})),
+);
+const WorkspacesPage = lazy(
+	() => import("./pages/WorkspacesPage/WorkspacesPage"),
+);
 
 // Lazy load pages
 // - Pages that are secondary, not in the main navigation or not usually accessed

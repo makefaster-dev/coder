@@ -799,17 +799,22 @@ func (c *GithubOAuth2Config) AuthCodeURL(state string, opts ...oauth2.AuthCodeOp
 // @Success 200 {object} codersdk.AuthMethods
 // @Router /api/v2/users/authmethods [get]
 func (api *API) userAuthMethods(rw http.ResponseWriter, r *http.Request) {
+	httpapi.Write(r.Context(), rw, http.StatusOK, api.AuthMethods())
+}
+
+// AuthMethods returns the authentication methods available on this deployment.
+// It is exported so the response can also be embedded into the HTML document
+// metadata, saving the frontend a request on the login screen.
+func (api *API) AuthMethods() codersdk.AuthMethods {
 	var signInText string
 	var iconURL string
 
 	if api.OIDCConfig != nil {
 		signInText = api.OIDCConfig.SignInText
-	}
-	if api.OIDCConfig != nil {
 		iconURL = api.OIDCConfig.IconURL
 	}
 
-	httpapi.Write(r.Context(), rw, http.StatusOK, codersdk.AuthMethods{
+	return codersdk.AuthMethods{
 		TermsOfServiceURL: api.DeploymentValues.TermsOfServiceURL.Value(),
 		Password: codersdk.AuthMethod{
 			Enabled: !api.DeploymentValues.DisablePasswordAuth.Value(),
@@ -823,7 +828,7 @@ func (api *API) userAuthMethods(rw http.ResponseWriter, r *http.Request) {
 			SignInText: signInText,
 			IconURL:    iconURL,
 		},
-	})
+	}
 }
 
 // @Summary Get Github device auth.

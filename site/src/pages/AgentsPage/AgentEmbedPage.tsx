@@ -5,6 +5,7 @@ import { getErrorMessage } from "#/api/errors";
 import { Button } from "#/components/Button/Button";
 import { Loader } from "#/components/Loader/Loader";
 import { useAuthContext } from "#/contexts/auth/AuthProvider";
+import { DiffsWorkerPoolProvider } from "#/contexts/DiffsWorkerPoolProvider";
 import { ProxyProvider } from "#/contexts/ProxyContext";
 import { DashboardProvider } from "#/modules/dashboard/DashboardProvider";
 import { permissionChecks } from "#/modules/permissions";
@@ -338,4 +339,14 @@ const AgentEmbedPage: FC = () => {
 	);
 };
 
-export default AgentEmbedPage;
+// The diffs worker pool is provided here instead of the app root so the
+// workers and highlighter only spawn on the surfaces that render diffs.
+const AgentEmbedPageWithWorkerPool: FC = () => {
+	return (
+		<DiffsWorkerPoolProvider>
+			<AgentEmbedPage />
+		</DiffsWorkerPoolProvider>
+	);
+};
+
+export default AgentEmbedPageWithWorkerPool;

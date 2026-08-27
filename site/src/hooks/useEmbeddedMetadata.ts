@@ -1,6 +1,7 @@
 import { useMemo, useSyncExternalStore } from "react";
 import type {
 	AppearanceConfig,
+	AuthMethods,
 	BuildInfoResponse,
 	Entitlements,
 	Experiment,
@@ -31,6 +32,7 @@ type AvailableMetadata = Readonly<{
 	entitlements: Entitlements;
 	regions: readonly Region[];
 	"build-info": BuildInfoResponse;
+	"auth-methods": AuthMethods;
 	"ai-tasks-enabled": boolean;
 	"ai-gateway-enabled": boolean;
 	permissions: Permissions;
@@ -95,6 +97,7 @@ export class MetadataManager implements MetadataManagerApi {
 			entitlements: this.registerValue<Entitlements>("entitlements"),
 			experiments: this.registerValue<Experiment[]>("experiments"),
 			"build-info": this.registerValue<BuildInfoResponse>("build-info"),
+			"auth-methods": this.registerValue<AuthMethods>("auth-methods"),
 			regions: this.registerRegionValue(),
 			"ai-tasks-enabled": this.registerValue<boolean>("ai-tasks-enabled"),
 			"ai-gateway-enabled": this.registerValue<boolean>("ai-gateway-enabled"),

@@ -2,6 +2,7 @@ package site
 
 import (
 	"bytes"
+	"compress/gzip"
 	"context"
 	"database/sql"
 	_ "embed"
@@ -22,14 +23,17 @@ import (
 	"text/template" // html/template escapes some nonces
 	"time"
 
+	"github.com/andybalholm/brotli"
 	"github.com/google/uuid"
 	"github.com/justinas/nosurf"
+	"github.com/klauspost/compress/zstd"
 	"github.com/unrolled/secure"
 	"golang.org/x/sync/errgroup"
 	"golang.org/x/xerrors"
 
 	"cdr.dev/slog/v3"
 	"github.com/coder/coder/v2/coderd/appearance"
+	"github.com/coder/coder/v2/coderd/cachecompress"
 	"github.com/coder/coder/v2/coderd/database"
 	"github.com/coder/coder/v2/coderd/database/db2sdk"
 	"github.com/coder/coder/v2/coderd/database/dbauthz"
@@ -84,6 +88,7 @@ type Options struct {
 	Logger            slog.Logger
 	AITasksEnabled    bool
 	AIGatewayEnabled  bool
+	AuthMethods       codersdk.AuthMethods
 }
 
 func New(opts *Options) (*Handler, error) {
@@ -114,20 +119,27 @@ func New(opts *Options) (*Handler, error) {
 
 	mux := http.NewServeMux()
 	mux.Handle("/bin/", binHand)
-	mux.Handle("/", http.FileServer(
-		http.FS(
-			// OnlyFiles is a wrapper around the file system that prevents directory
-			// listings. Directory listings are not required for the site file system, so we
-			// exclude it as a security measure. In practice, this file system comes from our
-			// open source code base, but this is considered a best practice for serving
-			// static files.
-			OnlyFiles(opts.SiteFS))),
-	)
+	// OnlyFiles is a wrapper around the file system that prevents directory
+	// listings. Directory listings are not required for the site file system, so we
+	// exclude it as a security measure. In practice, this file system comes from our
+	// open source code base, but this is considered a best practice for serving
+	// static files.
+	staticFileFS := http.FS(OnlyFiles(opts.SiteFS))
+	staticFileHandler, err := newStaticFileHandler(opts, staticFileFS)
+	if err != nil {
+		return nil, err
+	}
+	mux.Handle("/", staticFileHandler)
 	buildInfoResponse, err := json.Marshal(opts.BuildInfo)
 	if err != nil {
 		return nil, xerrors.Errorf("failed to marshal build info: %w", err)
 	}
 	handler.buildInfoJSON = html.EscapeString(string(buildInfoResponse))
+	authMethodsResponse, err := json.Marshal(opts.AuthMethods)
+	if err != nil {
+		return nil, xerrors.Errorf("failed to marshal auth methods: %w", err)
+	}
+	handler.authMethodsJSON = html.EscapeString(string(authMethodsResponse))
 	handler.handler = mux.ServeHTTP
 
 	handler.installScript, err = parseInstallScript(opts.SiteFS, opts.BuildInfo)
@@ -141,11 +153,12 @@ func New(opts *Options) (*Handler, error) {
 type Handler struct {
 	opts *Options
 
-	secureHeaders *secure.Secure
-	handler       http.HandlerFunc
-	htmlTemplates *template.Template
-	buildInfoJSON string
-	installScript []byte
+	secureHeaders   *secure.Secure
+	handler         http.HandlerFunc
+	htmlTemplates   *template.Template
+	buildInfoJSON   string
+	authMethodsJSON string
+	installScript   []byte
 
 	// RegionsFetcher will attempt to fetch the more detailed WorkspaceProxy data, but will fall back to the
 	// regions if the user does not have the correct permissions.
@@ -167,9 +180,10 @@ func (h *Handler) ServeHTTP(rw http.ResponseWriter, r *http.Request) {
 	reqFile := filePath(r.URL.Path)
 	state := htmlState{
 		// Token is the CSRF token for the given request
-		CSRF:      csrfState{Token: nosurf.Token(r)},
-		BuildInfo: h.buildInfoJSON,
-		DocsURL:   h.opts.DocsURL,
+		CSRF:        csrfState{Token: nosurf.Token(r)},
+		BuildInfo:   h.buildInfoJSON,
+		DocsURL:     h.opts.DocsURL,
+		AuthMethods: h.authMethodsJSON,
 	}
 
 	// First check if it's a file we have in our templates
@@ -235,6 +249,37 @@ func (h *Handler) ServeHTTP(rw http.ResponseWriter, r *http.Request) {
 	h.handler.ServeHTTP(rw, r)
 }
 
+// newStaticFileHandler serves the static site files. When a cache directory is
+// available, responses are compressed once at maximum level and served from an
+// on-disk cache, which yields denser transfers than the per-request streaming
+// compression applied to dynamic responses. The bundled assets are content
+// hashed, so a cached compression never goes stale within one release.
+func newStaticFileHandler(opts *Options, files http.FileSystem) (http.Handler, error) {
+	if opts.CacheDir == "" {
+		return http.FileServer(files), nil
+	}
+	compressedCacheDir := filepath.Join(opts.CacheDir, "compressed")
+	if err := os.MkdirAll(compressedCacheDir, 0o700); err != nil {
+		return nil, xerrors.Errorf("failed to create compressed directory in cache dir: %w", err)
+	}
+	// gzip and deflate take their level from the constructor argument; brotli
+	// and zstd are configured with their own maximum settings below.
+	cmp := cachecompress.NewCompressor(opts.Logger, gzip.BestCompression, compressedCacheDir, files)
+	cmp.SetEncoder("zstd", func(w io.Writer, _ int) io.WriteCloser {
+		zw, err := zstd.NewWriter(w, zstd.WithEncoderLevel(zstd.SpeedBestCompression))
+		if err != nil {
+			panic("invalid zstd compressor: " + err.Error())
+		}
+		return zw
+	})
+	// Registered last so brotli wins encoder precedence: it produces the
+	// densest output for text assets among the encodings browsers accept.
+	cmp.SetEncoder("br", func(w io.Writer, _ int) io.WriteCloser {
+		return brotli.NewWriterLevel(w, brotli.BestCompression)
+	})
+	return cmp, nil
+}
+
 // filePath returns the filepath of the requested file.
 func filePath(p string) string {
 	if !strings.HasPrefix(p, "/") {
@@ -266,6 +311,7 @@ type htmlState struct {
 	Experiments    string
 	Regions        string
 	DocsURL        string
+	AuthMethods    string
 
 	AITasksEnabled   string
 	AIGatewayEnabled string

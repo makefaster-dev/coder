@@ -12,7 +12,6 @@ import { RouterProvider } from "react-router";
 import { TooltipProvider } from "#/components/Tooltip/Tooltip";
 import { Toaster } from "./components/Toaster/Toaster";
 import { AuthProvider } from "./contexts/auth/AuthProvider";
-import { DiffsWorkerPoolProvider } from "./contexts/DiffsWorkerPoolProvider";
 import { ThemeProvider } from "./contexts/ThemeProvider";
 import { router } from "./router";
 
@@ -53,16 +52,14 @@ export const AppProviders: FC<AppProvidersProps> = ({
 
 	return (
 		<QueryClientProvider client={queryClient}>
-			<DiffsWorkerPoolProvider>
-				<AuthProvider>
-					<ThemeProvider>
-						<TooltipProvider delayDuration={100}>
-							{children}
-							<Toaster />
-						</TooltipProvider>
-					</ThemeProvider>
-				</AuthProvider>
-			</DiffsWorkerPoolProvider>
+			<AuthProvider>
+				<ThemeProvider>
+					<TooltipProvider delayDuration={100}>
+						{children}
+						<Toaster />
+					</TooltipProvider>
+				</ThemeProvider>
+			</AuthProvider>
 			{showDevtools && <ReactQueryDevtools initialIsOpen={showDevtools} />}
 		</QueryClientProvider>
 	);

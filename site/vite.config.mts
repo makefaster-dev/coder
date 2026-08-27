@@ -65,10 +65,32 @@ export default defineConfig({
 				},
 				codeSplitting: {
 					groups: [
+						// react and vite's preload helper must be captured before
+						// the monaco group. Without this, the chunker merges them
+						// into the monaco chunk (via @monaco-editor/react), which
+						// forces every page to download the whole editor chunk at
+						// boot just to get react or the dynamic-import helper.
+						{
+							name: "react",
+							test: /node_modules\/(?:react|react-dom|scheduler|state-local)\/|vite\/preload-helper/,
+						},
 						{ name: "monaco", test: /monaco-editor/ },
 						{ name: "xterm", test: /@xterm/ },
 						{ name: "emoji-mart", test: /emoji-mart/ },
 						{ name: "radix-ui", test: /radix-ui/ },
+						// Merge families of tiny shared vendor modules that
+						// otherwise ship as dozens of 1-3KB chunks, each costing
+						// a request on the boot path.
+						{ name: "icons", test: /node_modules\/lucide-react\// },
+						{
+							name: "lodash",
+							test: /node_modules\/(?:lodash|lodash-es)\//,
+						},
+						{ name: "dayjs", test: /node_modules\/dayjs\// },
+						{
+							name: "data-vendor",
+							test: /node_modules\/(?:@tanstack|axios|clsx|class-variance-authority|tailwind-merge|cronstrue|date-fns)\//,
+						},
 					],
 				},
 			},
