@@ -4,13 +4,13 @@ import {
 	type FC,
 	type HTMLProps,
 	isValidElement,
+	lazy,
 	memo,
 	type PropsWithChildren,
 	type ReactNode,
+	Suspense,
 } from "react";
 import ReactMarkdown, { type Options } from "react-markdown";
-import { Prism as SyntaxHighlighter } from "react-syntax-highlighter";
-import { dracula } from "react-syntax-highlighter/dist/cjs/styles/prism";
 import gfm from "remark-gfm";
 import { Link } from "#/components/Link/Link";
 import {
@@ -21,6 +21,10 @@ import {
 	TableRow,
 } from "#/components/Table/Table";
 import { cn } from "#/utils/cn";
+
+// Loaded lazily because the highlighter and its language grammars are heavy
+// and only needed once a code block is actually rendered.
+const MarkdownCodeBlock = lazy(() => import("./MarkdownCodeBlock"));
 
 interface MarkdownProps {
 	/**
@@ -76,15 +80,17 @@ export const Markdown: FC<MarkdownProps> = (props) => {
 					const match = /language-(\w+)/.exec(className || "");
 
 					return match ? (
-						<SyntaxHighlighter
-							style={dracula}
-							language={match[1].toLowerCase() ?? "language-shell"}
-							useInlineStyles={false}
-							codeTagProps={{ style: {} }}
-							{...restProps} // Exclude 'ref' from being passed here
+						<Suspense
+							fallback={
+								<pre>
+									<code {...restProps}>{String(children)}</code>
+								</pre>
+							}
 						>
-							{String(children)}
-						</SyntaxHighlighter>
+							<MarkdownCodeBlock language={match[1].toLowerCase()}>
+								{String(children)}
+							</MarkdownCodeBlock>
+						</Suspense>
 					) : (
 						<code
 							className="rounded-sm bg-border px-1 py-px text-sm text-content-primary"
